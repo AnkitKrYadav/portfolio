@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Peace</title>
     <link rel="icon" type="image/png" href="./logo.png">
-    <link rel="preload" as="image" href="./peace-theme.jpg" fetchpriority="high">
+    <link rel="preload" as="image" href="./peace-theme.jpg" fetchpriority="high" crossorigin="anonymous">
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
     <style>
         :root {
             --accent: #6aa6a3;
@@ -288,8 +289,17 @@
         let currentImageIndex = 0;
         let slideshowInterval = null;
 
+        // Mobile debug console
+        const debugDiv = document.createElement('div');
+        debugDiv.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.8);color:white;padding:10px;font-size:12px;max-height:200px;overflow-y:auto;z-index:9999;border-radius:5px;';
+        document.body.appendChild(debugDiv);
+
         function log(...args) {
-            if (DEBUG) console.log('[Peace]', ...args);
+            if (DEBUG) {
+                console.log('[Peace]', ...args);
+                debugDiv.innerHTML += `[Peace] ${args.join(' ')}<br>`;
+                debugDiv.scrollTop = debugDiv.scrollHeight;
+            }
         }
 
         function format(t) {
@@ -341,35 +351,67 @@
             try {
                 if (audio.paused) {
                     await audio.play();
-                    log('Audio playing');
+                    log('Audio playing via button');
                 } else {
                     audio.pause();
-                    log('Audio paused');
+                    log('Audio paused via button');
                 }
             } catch (e) {
-                log('Playback failed:', e);
+                log('Toggle playback failed:', e);
             }
         }
 
         log('Ready - waiting for user interaction');
 
-        // Simple gesture handler (only for initial start)
-        function handleGesture(e) {
-            // Don't trigger on button clicks
-            if (e.target.closest('.audio-ui') || e.target.closest('button')) {
-                return;
-            }
-            if (audio.paused) {
-                audio.play();
-                log('Started via gesture');
+        let gestureHandled = false;
+        let lastGestureTime = 0;
+        
+        // Handle any interaction that can start audio
+        function handleAudioStart(e) {
+            if (e.target.closest('.audio-ui') || e.target.closest('button')) return;
+            if (gestureHandled) return;
+            
+            log('Attempting audio start from', e.type);
+            
+            // Call play() synchronously within the event handler
+            try {
+                const playPromise = audio.play();
+                if (playPromise) {
+                    playPromise.then(() => {
+                        log('Audio started successfully');
+                        gestureHandled = true; // Only set after success
+                        lastGestureTime = Date.now(); // Only debounce after success
+                    }).catch((err) => {
+                        log('Audio start failed:', err.message);
+                        // Don't set gestureHandled or debounce, allow immediate retry
+                    });
+                } else {
+                    log('Audio started successfully (no promise)');
+                    gestureHandled = true; // Only set after success
+                    lastGestureTime = Date.now(); // Only debounce after success
+                }
+            } catch (err) {
+                log('Audio start failed immediately:', err.message);
+                // Don't set gestureHandled or debounce, allow immediate retry
             }
         }
-        const gestureOptions = { passive: true, once: true, capture: true };
-        document.addEventListener('pointerdown', handleGesture, gestureOptions);
-        document.addEventListener('touchstart', handleGesture, gestureOptions);
-        document.addEventListener('touchmove', handleGesture, gestureOptions);
-        document.addEventListener('touchend', handleGesture, gestureOptions);
-        // Removed mousedown to avoid conflicts with button clicks
+        
+        // Multiple gesture types for fastest possible response
+        document.addEventListener('keydown', handleAudioStart);                      // Keyboard - instant
+        document.addEventListener('pointerdown', handleAudioStart, { passive: true }); // Desktop mouse - instant  
+        document.addEventListener('touchstart', handleAudioStart, { passive: true }); // Touch - instant when allowed
+        document.addEventListener('click', handleAudioStart);                        // Universal fallback
+        
+        // For testing: log all touch events
+        if (DEBUG) {
+            ['touchstart', 'touchmove', 'touchend', 'click', 'pointerdown', 'pointerup'].forEach(event => {
+                document.addEventListener(event, (e) => {
+                    if (!e.target.closest('.audio-ui')) {
+                        console.log(`[Touch Debug] ${event}, paused: ${audio.paused}`);
+                    }
+                }, { passive: true });
+            });
+        }
 
         btn.addEventListener('click', toggle);
 
