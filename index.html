@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Peace</title>
     <link rel="icon" type="image/png" href="./logo.png">
-    <link rel="preload" as="image" href="./peace-theme.jpg">
+    <link rel="preload" as="image" href="./peace-theme.jpg" fetchpriority="high">
     <style>
         :root {
             --accent: #6aa6a3;
@@ -29,7 +29,7 @@
 
         body {
             position: relative;
-            background: #000 url('./peace-theme.jpg') center center / cover no-repeat;
+            background: #000;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -47,9 +47,8 @@
             z-index: 1;
             opacity: 0;
             transition: opacity 4s ease-in-out, transform 20s ease-in-out;
-            will-change: opacity, transform;
             contain: layout style paint;
-            image-rendering: high-quality;
+            content-visibility: auto;
         }
 
         .fullscreen-bg.active {
@@ -245,7 +244,7 @@
 
 <body>
     <!-- Full-screen background images -->
-    <img src="./peace-theme.jpg" alt="Peaceful ambient scene" class="fullscreen-bg active" loading="eager" decoding="sync">
+    <img id="first-img" src="./peace-theme.jpg" alt="Peaceful ambient scene" class="fullscreen-bg active" loading="eager" decoding="sync" fetchpriority="high">
     <img src="./peace-theme-2.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
     <img src="./peace-theme-3.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
     <img src="./peace-theme-4.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
@@ -256,7 +255,7 @@
     <div class="overlay"></div>
 
     <!-- audio element -->
-    <audio id="bg-audio" src="./peace-theme.mp3" preload="auto" loop muted></audio>
+    <audio id="bg-audio" src="./peace-theme.mp3" preload="metadata" loop></audio>
 
     <!-- Centered audio controls -->
     <div class="audio-ui" id="audio-ui" aria-live="polite">
@@ -299,19 +298,15 @@
             const nextIndex = (currentImageIndex + 1) % bgImages.length;
             const next = bgImages[nextIndex];
 
-            // Add zoom effect to current
-            current.classList.add('zoom');
-
-            // Start fade transition after a moment
+            // Remove zoom from current image first (shrinks back to normal)
+            current.classList.remove('zoom');
+            
+            // Start fade transition after zoom is removed
             setTimeout(() => {
                 current.classList.remove('active');
                 next.classList.add('active');
-
-                // Remove zoom from previous, reset for next cycle
-                setTimeout(() => {
-                    current.classList.remove('zoom');
-                }, 2000);
-            }, 4000);
+                next.classList.add('zoom');
+            }, 2000);
 
             currentImageIndex = nextIndex;
         }
@@ -319,7 +314,7 @@
         // Start slideshow only when audio plays
         function startSlideshow() {
             if (!slideshowInterval) {
-                bgImages[0].classList.add('zoom');
+                bgImages[0].classList.add('zoom'); // First image gets zoom
                 slideshowInterval = setInterval(rotateBackground, 15000);
             }
         }
@@ -337,53 +332,30 @@
         });
 
         async function toggle() {
-            if (audio.paused) {
-                try {
-                    audio.muted = false;
+            try {
+                if (audio.paused) {
                     await audio.play();
-                    log('Audio play via button');
-                } catch (e) {
-                    console.warn('[Peace] Playback failed:', e);
+                    log('Audio playing');
+                } else {
+                    audio.pause();
+                    log('Audio paused');
                 }
-            } else {
-                audio.pause();
-                log('Audio paused via button');
+            } catch (e) {
+                log('Playback failed:', e);
             }
         }
 
-        // Autoplay muted on load, then unmute immediately
-        audio.muted = true;
-        log('Attempting muted autoplay');
-        const playPromise = audio.play();
-        
-        // Once playing starts, unmute it and start slideshow
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                audio.muted = false;
-                startSlideshow();
-                log('Autoplay started and unmuted');
-            }).catch(() => {
-                log('Autoplay blocked, waiting for gesture');
-            });
-        } else {
-            // Fallback for older browsers
-            audio.muted = false;
-            startSlideshow();
-            log('Autoplay fallback started');
-        }
+        log('Ready - waiting for user interaction');
 
-        // Gesture handlers: unmute + ensure slideshow on any interaction
-        function handleGesture() {
-            audio.muted = false;
-            const playAttempt = audio.play();
-            if (playAttempt && typeof playAttempt.then === 'function') {
-                playAttempt.then(() => {
-                    startSlideshow();
-                    log('Gesture playback started');
-                }).catch(() => {});
-            } else {
-                startSlideshow();
-                log('Gesture playback started (no promise)');
+        // Simple gesture handler (only for initial start)
+        function handleGesture(e) {
+            // Don't trigger on button clicks
+            if (e.target.closest('.audio-ui') || e.target.closest('button')) {
+                return;
+            }
+            if (audio.paused) {
+                audio.play();
+                log('Started via gesture');
             }
         }
         const gestureOptions = { passive: true, once: true, capture: true };
@@ -391,8 +363,7 @@
         document.addEventListener('touchstart', handleGesture, gestureOptions);
         document.addEventListener('touchmove', handleGesture, gestureOptions);
         document.addEventListener('touchend', handleGesture, gestureOptions);
-        document.addEventListener('mousedown', handleGesture, gestureOptions);
-        document.addEventListener('click', handleGesture, { once: true, capture: true });
+        // Removed mousedown to avoid conflicts with button clicks
 
         btn.addEventListener('click', toggle);
 
