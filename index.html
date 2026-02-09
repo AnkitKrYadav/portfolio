@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Peace</title>
     <link rel="icon" type="image/png" href="./logo.png">
+    <link rel="preload" as="image" href="./peace-theme.jpg">
     <style>
         :root {
             --accent: #6aa6a3;
@@ -46,6 +47,9 @@
             z-index: 1;
             opacity: 0;
             transition: opacity 4s ease-in-out, transform 20s ease-in-out;
+            will-change: opacity, transform;
+            contain: layout style paint;
+            image-rendering: high-quality;
         }
 
         .fullscreen-bg.active {
@@ -241,12 +245,12 @@
 
 <body>
     <!-- Full-screen background images -->
-    <img src="./peace-theme.jpg" alt="Peaceful ambient scene" class="fullscreen-bg active">
-    <img src="./peace-theme-2.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg">
-    <img src="./peace-theme-3.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg">
-    <img src="./peace-theme-4.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg">
-    <img src="./peace-theme-5.jpg" alt="Peaceful ambient scene" class="fullscreen-bg">
-    <img src="./peace-theme-6.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg">
+    <img src="./peace-theme.jpg" alt="Peaceful ambient scene" class="fullscreen-bg active" loading="eager" decoding="sync">
+    <img src="./peace-theme-2.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
+    <img src="./peace-theme-3.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
+    <img src="./peace-theme-4.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
+    <img src="./peace-theme-5.jpg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
+    <img src="./peace-theme-6.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
 
     <!-- Subtle overlay -->
     <div class="overlay"></div>
@@ -311,7 +315,7 @@
         function startSlideshow() {
             if (!slideshowInterval) {
                 bgImages[0].classList.add('zoom');
-                slideshowInterval = setInterval(rotateBackground, 10000);
+                slideshowInterval = setInterval(rotateBackground, 15000);
             }
         }
 
@@ -340,17 +344,35 @@
             }
         }
 
-        // Autoplay muted on load
-        audio.play().catch(() => { });
+        // Autoplay muted on load, then unmute immediately
+        audio.muted = true;
+        const playPromise = audio.play();
+        
+        // Once playing starts, unmute it and start slideshow
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                audio.muted = false;
+                startSlideshow();
+            }).catch(() => {
+                console.log('Autoplay blocked, waiting for gesture');
+            });
+        } else {
+            // Fallback for older browsers
+            audio.muted = false;
+            startSlideshow();
+        }
 
-        // Unmute and play on first gesture
+        // Gesture handlers: unmute + ensure slideshow on any interaction
         function handleGesture() {
             audio.muted = false;
-            if (audio.paused) audio.play().catch(() => { });
+            startSlideshow();
+            if (audio.paused) {
+                audio.play().catch(() => {});
+            }
         }
-        ['touchstart', 'touchmove', 'touchend', 'click', 'keydown'].forEach(event => {
-            document.addEventListener(event, handleGesture, { passive: true, once: true });
-        });
+        document.addEventListener('touchstart', handleGesture, { passive: true, once: true });
+        document.addEventListener('touchmove', handleGesture, { passive: true, once: true });
+        document.addEventListener('click', handleGesture, { once: true });
 
         btn.addEventListener('click', toggle);
 
