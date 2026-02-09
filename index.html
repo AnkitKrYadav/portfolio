@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Peace</title>
-    <link rel="icon" type="image/png" href="./logo.png">
+    <link rel="icon" type="image/png" href="./favicon.ico">
     <link rel="preload" as="image" href="./peace-theme.jpg" fetchpriority="high" crossorigin="anonymous">
     <link rel="dns-prefetch" href="//fonts.googleapis.com">
     <style>
@@ -245,7 +245,7 @@
 
 <body>
     <!-- Full-screen background images -->
-    <img id="first-img" src="./peace-theme.jpg" alt="Peaceful ambient scene" class="fullscreen-bg active" loading="eager" decoding="sync" fetchpriority="high">
+    <img id="first-img" src="./peace-theme.jpg" alt="Peaceful ambient scene" class="fullscreen-bg active" loading="eager" decoding="sync" fetchpriority="high" style="opacity: 0;">
     <img src="./peace-theme-2.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
     <img src="./peace-theme-3.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
     <img src="./peace-theme-4.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
@@ -256,7 +256,7 @@
     <div class="overlay"></div>
 
     <!-- audio element -->
-    <audio id="bg-audio" src="./peace-theme.mp3" preload="metadata" loop></audio>
+    <audio id="bg-audio" src="./peace-theme.mp3" preload="none" loop></audio>
 
     <!-- Centered audio controls -->
     <div class="audio-ui" id="audio-ui" aria-live="polite">
@@ -281,13 +281,22 @@
     <meta name="description" content="Peaceful ambient portfolio with cinematic slideshow">
 
     <script>
+        // ===== CORE ELEMENTS =====
         const audio = document.getElementById('bg-audio');
         const btn = document.getElementById('playbtn');
         const time = document.getElementById('time');
         const bgImages = document.querySelectorAll('.fullscreen-bg');
-        const DEBUG = false;
+        const firstImg = document.getElementById('first-img');
+        const DEBUG = false; // Set to true for debugging
         let currentImageIndex = 0;
         let slideshowInterval = null;
+
+        // ===== SMOOTH IMAGE LOADING =====
+        // Hide progressive JPEG loading, show only when complete
+        firstImg.addEventListener('load', () => {
+            firstImg.style.transition = 'opacity 0.3s ease-in';
+            firstImg.style.opacity = '1';
+        });
 
         // Mobile debug console
         const debugDiv = document.createElement('div');
@@ -308,6 +317,7 @@
             return m + ':' + s;
         }
 
+        // ===== SLIDESHOW LOGIC =====
         // Background slideshow with smooth transitions
         function rotateBackground() {
             const current = bgImages[currentImageIndex];
@@ -326,6 +336,8 @@
 
             currentImageIndex = nextIndex;
         }
+
+        // ===== AUDIO CONTROLS =====
 
         // Start slideshow only when audio plays
         function startSlideshow() {
@@ -363,6 +375,7 @@
 
         log('Ready - waiting for user interaction');
 
+        // ===== USER INTERACTION HANDLING =====
         let gestureHandled = false;
         let lastGestureTime = 0;
         
@@ -396,11 +409,9 @@
             }
         }
         
-        // Multiple gesture types for fastest possible response
-        document.addEventListener('keydown', handleAudioStart);                      // Keyboard - instant
-        document.addEventListener('pointerdown', handleAudioStart, { passive: true }); // Desktop mouse - instant  
-        document.addEventListener('touchstart', handleAudioStart, { passive: true }); // Touch - instant when allowed
-        document.addEventListener('click', handleAudioStart);                        // Universal fallback
+        // Streamlined gesture handling - only most reliable events
+        document.addEventListener('click', handleAudioStart);                        // Universal
+        document.addEventListener('keydown', handleAudioStart);                      // Desktop keyboard
         
         // For testing: log all touch events
         if (DEBUG) {
