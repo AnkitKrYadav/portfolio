@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Peace</title>
     <link rel="icon" type="image/png" href="./favicon.ico">
-    <link rel="preload" as="image" href="./peace-theme.jpg" fetchpriority="high" crossorigin="anonymous">
+    <link rel="preload" as="image" href="./peace-theme-5.jpg" fetchpriority="high" crossorigin="anonymous">
     <link rel="dns-prefetch" href="//fonts.googleapis.com">
     <style>
         :root {
@@ -47,7 +47,7 @@
             max-width: none;
             z-index: 1;
             opacity: 0;
-            transition: opacity 4s ease-in-out, transform 20s ease-in-out;
+            transition: opacity 4s ease-in-out;
             contain: layout style paint;
             content-visibility: auto;
         }
@@ -56,8 +56,9 @@
             opacity: 1;
         }
 
-        .fullscreen-bg.zoom {
-            transform: translateX(-50%) scale(1.05);
+        /* Fast fade for first image load */
+        #first-img.active {
+            transition: opacity 0.09s ease-in;
         }
 
         /* Subtle overlay for better contrast */
@@ -245,12 +246,12 @@
 
 <body>
     <!-- Full-screen background images -->
-    <img id="first-img" src="./peace-theme.jpg" alt="Peaceful ambient scene" class="fullscreen-bg active" loading="eager" decoding="sync" fetchpriority="high" style="opacity: 0;">
-    <img src="./peace-theme-2.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
+    <img id="first-img" src="./peace-theme-5.jpg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="eager" decoding="sync" fetchpriority="high">
+    <img src="./peace-theme-6.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
     <img src="./peace-theme-3.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
     <img src="./peace-theme-4.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
-    <img src="./peace-theme-5.jpg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
-    <img src="./peace-theme-6.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
+    <img src="./peace-theme.jpg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
+    <img src="./peace-theme-2.jpeg" alt="Peaceful ambient scene" class="fullscreen-bg" loading="lazy" decoding="async">
 
     <!-- Subtle overlay -->
     <div class="overlay"></div>
@@ -269,7 +270,7 @@
 
     <!-- Minimal contact at bottom -->
     <div class="contact">
-        <a href="mailto:tatanagaraky2@gmail.com?subject=Hello" aria-label="Contact via email">
+        <a href="mailto:tatanagaraky2@gmail.com?subject=Hi" aria-label="Contact via email">
             tatanagaraky2@gmail.com
         </a>
     </div>
@@ -292,10 +293,9 @@
         let slideshowInterval = null;
 
         // ===== SMOOTH IMAGE LOADING =====
-        // Hide progressive JPEG loading, show only when complete
+        // Show first image when fully loaded
         firstImg.addEventListener('load', () => {
-            firstImg.style.transition = 'opacity 0.3s ease-in';
-            firstImg.style.opacity = '1';
+            firstImg.classList.add('active');
         });
 
         // Mobile debug console
@@ -324,14 +324,10 @@
             const nextIndex = (currentImageIndex + 1) % bgImages.length;
             const next = bgImages[nextIndex];
 
-            // Remove zoom from current image first (shrinks back to normal)
-            current.classList.remove('zoom');
-            
-            // Start fade transition after zoom is removed
+            // Simple fade transition
             setTimeout(() => {
                 current.classList.remove('active');
                 next.classList.add('active');
-                next.classList.add('zoom');
             }, 2000);
 
             currentImageIndex = nextIndex;
@@ -342,7 +338,6 @@
         // Start slideshow only when audio plays
         function startSlideshow() {
             if (!slideshowInterval) {
-                bgImages[0].classList.add('zoom'); // First image gets zoom
                 slideshowInterval = setInterval(rotateBackground, 15000);
             }
         }
