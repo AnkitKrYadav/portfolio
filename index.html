@@ -29,7 +29,7 @@
 
         body {
             position: relative;
-            background: #000;
+            background: #000 url('./peace-theme.jpg') center center / cover no-repeat;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -279,8 +279,13 @@
         const btn = document.getElementById('playbtn');
         const time = document.getElementById('time');
         const bgImages = document.querySelectorAll('.fullscreen-bg');
+        const DEBUG = true;
         let currentImageIndex = 0;
         let slideshowInterval = null;
+
+        function log(...args) {
+            if (DEBUG) console.log('[Peace]', ...args);
+        }
 
         function format(t) {
             const s = Math.floor(t % 60).toString().padStart(2, '0');
@@ -336,16 +341,19 @@
                 try {
                     audio.muted = false;
                     await audio.play();
+                    log('Audio play via button');
                 } catch (e) {
-                    console.warn('Playback failed:', e);
+                    console.warn('[Peace] Playback failed:', e);
                 }
             } else {
                 audio.pause();
+                log('Audio paused via button');
             }
         }
 
         // Autoplay muted on load, then unmute immediately
         audio.muted = true;
+        log('Attempting muted autoplay');
         const playPromise = audio.play();
         
         // Once playing starts, unmute it and start slideshow
@@ -353,26 +361,38 @@
             playPromise.then(() => {
                 audio.muted = false;
                 startSlideshow();
+                log('Autoplay started and unmuted');
             }).catch(() => {
-                console.log('Autoplay blocked, waiting for gesture');
+                log('Autoplay blocked, waiting for gesture');
             });
         } else {
             // Fallback for older browsers
             audio.muted = false;
             startSlideshow();
+            log('Autoplay fallback started');
         }
 
         // Gesture handlers: unmute + ensure slideshow on any interaction
         function handleGesture() {
             audio.muted = false;
-            startSlideshow();
-            if (audio.paused) {
-                audio.play().catch(() => {});
+            const playAttempt = audio.play();
+            if (playAttempt && typeof playAttempt.then === 'function') {
+                playAttempt.then(() => {
+                    startSlideshow();
+                    log('Gesture playback started');
+                }).catch(() => {});
+            } else {
+                startSlideshow();
+                log('Gesture playback started (no promise)');
             }
         }
-        document.addEventListener('touchstart', handleGesture, { passive: true, once: true });
-        document.addEventListener('touchmove', handleGesture, { passive: true, once: true });
-        document.addEventListener('click', handleGesture, { once: true });
+        const gestureOptions = { passive: true, once: true, capture: true };
+        document.addEventListener('pointerdown', handleGesture, gestureOptions);
+        document.addEventListener('touchstart', handleGesture, gestureOptions);
+        document.addEventListener('touchmove', handleGesture, gestureOptions);
+        document.addEventListener('touchend', handleGesture, gestureOptions);
+        document.addEventListener('mousedown', handleGesture, gestureOptions);
+        document.addEventListener('click', handleGesture, { once: true, capture: true });
 
         btn.addEventListener('click', toggle);
 
